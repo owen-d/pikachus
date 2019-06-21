@@ -1,0 +1,54 @@
+---
+title: Ramblings on communications structures
+---
+
+
+# "We got funding and now nothing works"
+
+## Disclaimer
+This is not an attack on your organization. The examples are likely simplified and trite. The purpose of this post is to describe some similarities I see with communication structures and algorithms -- musings which make me think of _Big O notation for person to person communications_.
+
+## Everything works at low scale
+This isn't diminutive -- embrace it. When there's just a few of you, informal communication is often the best (and only) way that we coordinate. Considering communication is a lossy transaction, communication amongst few stakeholders has more fidelity than a game of telephone across an organization. Remember, even [bubble sort](https://en.wikipedia.org/wiki/Bubble_sort) works at low scale.
+
+## Stakeholder Groups
+Now let's consider a simple example where we have a group of N participants trying to arrive at some agreement (this could be implementation details, the next features to build, etc). We'll call these _Stakeholder Groups_ and they're O(n^2)!
+
+## Bikeshedding: the attribution incentive problem
+Consider obtaining consensus as a recursive function `f(proposal, participants)`, with the appropriate pseudocode:
+```
+if all_agree(proposal, proposal_participants)
+then proposal,
+else recur(proposal_with_changes, participants)
+```
+In other words, obtaining consensus may move a proposal from `state` -> `state'` depending on if participants have new suggestions. Those who have been involved in these situations will probably note that this is potentially non-terminating or may conclude via participant exhaustion rather than soundness of proposal.
+
+Ok, ok, how does this affect this bikeshedding business? For an elucidating and enjoyable introduction to bikeshedding, there's Poul-Henning Kamp's [letter](http://bikeshed.com/) to the BSD community. The relevant bits are that people tend to make minor amendments to projects in order to put their mark on it for credit or show that they are paying attention:
+
+> So no matter how well prepared, no matter how reasonable you are with your proposal, somebody will seize the chance to show that he is doing his job, that he is paying attention, that he is *here*.
+
+These amendments don't necessarily improve the proposal, but they definitely increase the time to consensus.
+
+Admission of guilt: I've totally done this, so let's find a way to temper/disincentivize our bad tendencies.
+
+## Jira as the false prophet
+
+First of all, I'd like to apologize for the inflamatory title: Jira is a tool (and a flexible one at that) which can be used in different ways. Rather, I'd like to detail some usage traps that are easily fallen into.
+Jira and many other "organizational" tools play into the attractive yet specious concept that development is linearly substitutable. It's attractive to management and planning because it commoditizes development and frames developers as a fungible asset class. Now, this isn't wrong _a priori_, but in my expereince  is dependent on sound (re: non-leaky) abstractions, which are difficult to come by. I'm sure everyone is familiar with the story of a dev, who, being new to a project, unintentionally harms some backend service by overutilizing exposed api methods or database calls in unscalable ways.
+
+That's an example of a computational inefficiency, but there are also process inefficiencies. When work is measured in small feature/fix tickets, it's easy to slap some mortar on a codebase rather than refactor it to support a new use case more elegantly. I call this _TDD -- Ticket Driven Development_. In my experience, good software and ticketing do not often map well onto each other. Instead, TDD enables bespoke solutions to one-off bugs, especially if the assignee isn't familiar with the codebase (re: developer fungibility) and the shadow-assignment ends up with the ones who _are_ familiar via PR reviews or similar, regardless of their assignments and work load.
+
+This is not to say that ticketing can't reflect good design or practices, but rather suggest that bad ticketing is easy, while good ticketing is hard.
+
+## Alternatives
+One paradigm I've worked with before is a sort of cascading hierarchy of responsibility (team-based tree structures). This is a fancy way to say that teams are made responsible for applications, features, or other aspects, but are generally left to their own devices to determine how to accomplish and maintain these goals. This empowers them to choose how to solve problems, rarely requiring top-down direction with respect to implementation. As an example, a DevOps team may be responsible for uptime, making CI/CD easy and reliable, ease of deployment, and time to remediation when incidents occur.
+
+This yields a few benefits. It reduces the scaling comms problem by sharding responsibilities into smaller teams. This, in turn, allows them to retain the benefits of informal comms at small scale. It also colocates system expertise and future decisionmaking and incentivizes teams to build robust, extensible systems instead of accreting layers of hacks and cruft.
+
+## Liaising between Product and Engineering
+Let's talk about the relations between Product and Engineering departments. It's worrying to see unidirectional comms (mandates) flow from product to engineering. In the past, I've heard things like, "Next, we're going to build X and it's going to work like Y". These mandates can be well reasoned and backed by product's research and relationships with customers, but delivering mandates without understanding the engineering minutiae is harmful. It also compounds itself when building large software platforms -- previous decisions often determine following ones, so we must be careful of the foundations we set.
+
+We used to work on reframing desires when coming to engineering with a problem/feature. Instead of saying, "We need _this_ built", instead say "We're facing _this_ problem and thought of _this_ solution. Does that make sense?" It gave engineering a chance to dissect the problem technically without being confrontational. This opportunity can result in better solutions, often via inverting the problem and solving it with a different paradigm.
+
+## Your mileage may vary
+My experiences are non-exhaustive: I've worked at companies ranging from very small (x<10) to slightly less small (50<x<100). Even in this small range, I've seen communication problems erode organizations' effectiveness. My thoughts are an engineer's take on trying to understand what problems arise when and for which reasons.
