@@ -1,13 +1,13 @@
 ---
-title: Primer on Probabilities: A basis for simulating WoW Classic
+title: 'Primer on Probabilities: A basis for simulating WoW Classic'
 ---
 
 Recently I've been getting very excited for the re-release of the original World of Warcraft, dubbed _Classic WoW_. When I was younger, particularly during the _Burning Crusade_ WoW expansion, I discovered a community which extensively modeled the combat mechanics of the game with the intent on performing optimally in many person encounters called _raids_. Back then there was a forum called _Elitist Jerks_ that cultivated this analysis we now refer to as _Theorycrafting_. Much has changed since those years and I figured I could sate my curiosity before the release date by attempting this sort of modeling in Haskell.
 
 ## Probability
-A while back, a colleague of mine showed me a really cool paper on [probibalistic programming](http://web.engr.oregonstate.edu/~erwig/papers/PFP_JFP06.pdf) in Haskell. This proved to be inspriational for this project. I don't intend this to be a monad tutorial, so you'll need some prerequisite knowledge on those to really grok the code, but it might not be necessary to follow it in a hand-wavy sense.
+A while back, a colleague of mine showed me a really cool paper on [probibalistic programming](http://web.engr.oregonstate.edu/~erwig/papers/PFP_JFP06.pdf) in Haskell, which is now the basis for this project. I don't intend this to be a monad tutorial, so you'll need some prerequisite knowledge to really grok the code. Otherwise, enjoy following along from a high level.
 
-Here we'll have the base definition along with a `Show` instance (so we can print it) and `Applicative`/`Monad` instances to combine distributions.
+Here is the base definition for a probability distribution along with a `Show` instance (so we can print it) and `Applicative`/`Monad` instances to combine distributions.
 ```haskell
 {-# LANGUAGE DeriveFunctor          #-}
 
@@ -48,8 +48,10 @@ d6
 0.167 6
 ```
 
-However, because of the `Monad` implementation, we can combine them (using a new `dedup` function to group by identical rolls):
+Due to the `Monad` implementation, we can combine them (using a new `dedup` function to group by identical rolls):
 ```haskell
+import qualified Data.Map            as M
+
 -- | dedup will combine identical events, summing their probabilities
 dedup :: Ord a => Dist a -> Dist a
 dedup (Dist xs) =
@@ -71,10 +73,10 @@ Pretty cool! What else can we do? Hrm, what if we could discard any instances th
 ```haskell
 instance Alternative Dist where
   empty = Dist []
-  (Dist (x:xs)) <|> _ = Dist (x:xs)
+  dist@(Dist (_:_)) <|> _ = dist
   _ <|> y = y
 ```
-This gives us the nifty [`guard`](http://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad.html#v:guard) function which returns `empty` on false predicates, thus short-circuiting monadic computations via the `MonadPlus` [law](https://en.wikibooks.org/wiki/Haskell/Alternative_and_MonadPlus#Alternative_and_MonadPlus_laws) `mzero >>= f  =  mzero`. This is automatically derived because Dist is an instance of both `Alternative` and `Monad`.
+This gives us the nifty [`guard`](http://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad.html#v:guard) function which returns `empty` on false predicates, thus short-circuiting monadic computations via the `MonadPlus` [law](https://en.wikibooks.org/wiki/Haskell/Alternative_and_MonadPlus#Alternative_and_MonadPlus_laws) `mzero >>= f  =  mzero`. This is automatically derived because `Dist` is an instance of both `Alternative` and `Monad`.
 
 Ok, that may be a fair bit to take in. No worries, it ends up allowing us to clip off all the rolls that aren't 7 from our previous distribution:
 ```haskell
@@ -142,14 +144,14 @@ res
 0.090 [Crit,Crit]
 ```
 
-One of the limitations in modeling WoW mechanics is that we don't have a game engine to actually run combat numbers a bajillion times and then average them out. Instead, we try to approximate outcomes via probabilities. However, not having access to actual raid environments, we're rather unsuited for handling certain mechanics.
+One of the limitations in modeling WoW mechanics is that we don't have a game engine to actually run combat numbers a bajillion times and then average them out. Instead, we try to approximate outcomes via probabilities, bu without access to actual raid environments, we're rather unsuited for handling certain mechanics.
 
 ## Improved Shadow Bolt
 One of these mechanics is the Warlock talent, _Improved Shadow Bolt_. With 5 points allocated, it reads:
 
 > Your Shadow Bolt critical strikes increase shadow damage done to the target by 20% until 4 non-periodic damage sources are applied. Effect lasts a maximum of 12 seconds.
 
-Since we don't have access to the rest of the raid, we will need to find another way of determining the effects of this skill as we can't calculate how much shadow damage other raid members are doing. Instead, we approximate by assuming all other warlocks are equally geared and we discount having other sources of shadow damage, i.e. from a Shadow Priest. Our path forward will be using the current Warlock's stats as a way to approximate this affect raid wide. Since we're not running long simulations, we'll try to find the _average effect of this skill per crit_ and apply it to the warlock as a bonus. This front loads the damage calculations and lets us avoid running long multi-round simulations.
+Since we don't have access to the rest of the raid, we will need to find another way of determining the effects of this skill as we can't calculate how much shadow damage other raid members are doing. Instead, we approximate by assuming all other warlocks are equally geared and we ignore other sources of shadow damage, i.e. from a Shadow Priest. We'll use the current Warlock's stats as a way to approximate this affect raid wide. Since we're not running long simulations, we'll try to find the _average effect of this skill per crit_ and apply it to the warlock as a flat bonus on critical spells. This front loads the damage calculations and lets us avoid running long multi-round simulations.
 
 Ok then, what do we need?
 - The warlock's crit chance
@@ -205,5 +207,3 @@ res
 That's it! Now we'd just have to tally up the expected damage from these and multiply it by the amount of the Imp Shadow Bolt modifier (20%).
 
 Hopefully this has wet your appetite -- I've been having a blast running simulations like these. The full repo is [here](https://github.com/owen-d/vanilla) for those interested. I'll be following up with another post detailing how we determine cast rotations for warlocks which need to use life tap intermitently for mana.
-
-- Owen
