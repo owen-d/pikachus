@@ -5,7 +5,7 @@ title: 'Primer on Probabilities: A basis for simulating WoW Classic'
 Recently I've been getting very excited for the re-release of the original World of Warcraft, dubbed _Classic WoW_. When I was younger, particularly during the _Burning Crusade_ WoW expansion, I discovered a community which extensively modeled the combat mechanics of the game with the intent on performing optimally in many person encounters called _raids_. Back then there was a forum called _Elitist Jerks_ that cultivated this analysis we now refer to as _Theorycrafting_. Much has changed since those years and I figured I could sate my curiosity before the release date by attempting this sort of modeling in Haskell.
 
 ## Probability
-A while back, a colleague of mine showed me a really cool paper on [probibalistic programming](http://web.engr.oregonstate.edu/~erwig/papers/PFP_JFP06.pdf) in Haskell, which is now the basis for this project. I don't intend this to be a monad tutorial, so you'll need some prerequisite knowledge to really grok the code. Otherwise, enjoy following along from a high level.
+A while back, a colleague of mine showed me a really cool paper on [probabilistic programming](http://web.engr.oregonstate.edu/~erwig/papers/PFP_JFP06.pdf) in Haskell, which is now the basis for this project. I don't intend this to be a monad tutorial, so you'll need some prerequisite knowledge to really grok the code. Otherwise, enjoy following along from a high level.
 
 Here is the base definition for a probability distribution along with a `Show` instance (so we can print it) and `Applicative`/`Monad` instances to combine distributions.
 ```haskell
