@@ -74,7 +74,7 @@ instance Alternative Dist where
   (Dist (x:xs)) <|> _ = Dist (x:xs)
   _ <|> y = y
 ```
-This gives us the nifty [`guard`](http://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad.html#v:guard) function which returns `empty` on false predicates, thus short-circuiting applicative computations via the `Alternative` [law](https://en.wikibooks.org/wiki/Haskell/Alternative_and_MonadPlus#Alternative_and_MonadPlus_laws) `empty <|> u  =  u`.
+This gives us the nifty [`guard`](http://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad.html#v:guard) function which returns `empty` on false predicates, thus short-circuiting monadic computations via the `MonadPlus` [law](https://en.wikibooks.org/wiki/Haskell/Alternative_and_MonadPlus#Alternative_and_MonadPlus_laws) `mzero >>= f  =  mzero`. This is automatically derived because Dist is an instance of both `Alternative` and `Monad`.
 
 Ok, that may be a fair bit to take in. No worries, it ends up allowing us to clip off all the rolls that aren't 7 from our previous distribution:
 ```haskell
@@ -82,7 +82,7 @@ result = dedup $ do
   x <- d6
   y <- d6
   let is7 = x + y == 7
-  guard (is7)
+  guard is7
   return is7
 ```
 ->
@@ -90,6 +90,120 @@ result = dedup $ do
 result
 0.167 True
 ```
-Notice how there are no more False events. This is useful if we want to clip out events that don't match a predicate.
+Notice how there are no more `False` events. This is useful if we want to clip out events that don't match a predicate.
 
-Now that we've got a feeling for how these compose, lets take a look at a more involved example.
+This can be easily turned into a helper function:
+```haskell
+-- | distribution that matches a predicate
+distWhere :: (a -> Bool) -> Dist a -> Dist a
+distWhere f dist = do
+  x <- dist
+  guard (f x)
+  return x
+```
+
+## WoW
+Now that we've got a feeling for how these compose, lets take a look at a more involved example. When a spell lands, it falls into one of three categories: Miss (no damage), Hit (normal damage), and Crit (More damage).
+```haskell
+data SpellResolve = Miss | Hit | Crit
+  deriving (Eq, Ord, Show)
+```
+Using this, we can sketch out a basic model for spell casting (40% `Miss`, 30% `Hit`, 30% `Crit`).
+```haskell
+castDist :: Dist SpellResolve
+castDist =
+  Dist [(Miss, 0.4), (Hit, 0.3), (Crit, 0.3)]
+```
+
+One thing that's commonly needed is the ability to model multiple rounds of combat:
+```haskell
+-- | chains a distribution for a number of rounds
+rounds :: Int -> Dist a -> Dist [a]
+rounds 0 _ = Dist [([],1)] -- pre-seeded with empty list
+rounds n dist = (:) <$> dist <*> rounds (n - 1) dist
+```
+Notice how we pre-seeded the base case with a distribution of an empty list. This is because we're moving from `Dist SpellResult` -> `Dist [SpellResult]` and we don't want to short-circuit the computation by operating on a distribution with no events as that is the list monad's `mzero` and `empty` definition.
+
+Giving it a run yields:
+```haskell
+res = rounds 2 castDist
+```
+->
+```haskell
+res
+0.160 [Miss,Miss]
+0.120 [Miss,Hit]
+0.120 [Miss,Crit]
+0.120 [Hit,Miss]
+0.090 [Hit,Hit]
+0.090 [Hit,Crit]
+0.120 [Crit,Miss]
+0.090 [Crit,Hit]
+0.090 [Crit,Crit]
+```
+
+One of the limitations in modeling WoW mechanics is that we don't have a game engine to actually run combat numbers a bajillion times and then average them out. Instead, we try to approximate outcomes via probabilities. However, not having access to actual raid environments, we're rather unsuited for handling certain mechanics.
+
+## Improved Shadow Bolt
+One of these mechanics is the Warlock talent, _Improved Shadow Bolt_. With 5 points allocated, it reads:
+
+> Your Shadow Bolt critical strikes increase shadow damage done to the target by 20% until 4 non-periodic damage sources are applied. Effect lasts a maximum of 12 seconds.
+
+Since we don't have access to the rest of the raid, we will need to find another way of determining the effects of this skill as we can't calculate how much shadow damage other raid members are doing. Instead, we approximate by assuming all other warlocks are equally geared and we discount having other sources of shadow damage, i.e. from a Shadow Priest. Our path forward will be using the current Warlock's stats as a way to approximate this affect raid wide. Since we're not running long simulations, we'll try to find the _average effect of this skill per crit_ and apply it to the warlock as a bonus. This front loads the damage calculations and lets us avoid running long multi-round simulations.
+
+Ok then, what do we need?
+- The warlock's crit chance
+- The warlocks base damage (ellided from this post for simplicity's sake)
+- A function which simulates 4 rounds of our distribution, removing anything after the first crit. Crits trigger a new application of Improved Shadow Bolt, effectively _clipping_ this debuff and replacing it. As such, only the first crit's damage can be applied to the benefit of this Improved Shadow Bolt.
+
+```haskell
+impShadowBolt :: Dist [SpellResolve]
+impShadowBolt =
+  trim <$> rounds 4 castDist
+  where
+    trim (Crit:xs) = [Crit]
+    trim (x:xs)    = x : trim xs
+    trim []        = []
+
+res = dedup $ impShadowBolt
+```
+->
+```haskell
+res
+0.026 [Miss,Miss,Miss,Miss]
+0.019 [Miss,Miss,Miss,Hit]
+0.019 [Miss,Miss,Miss,Crit]
+0.019 [Miss,Miss,Hit,Miss]
+0.014 [Miss,Miss,Hit,Hit]
+0.014 [Miss,Miss,Hit,Crit]
+0.048 [Miss,Miss,Crit]
+0.019 [Miss,Hit,Miss,Miss]
+0.014 [Miss,Hit,Miss,Hit]
+0.014 [Miss,Hit,Miss,Crit]
+0.014 [Miss,Hit,Hit,Miss]
+0.011 [Miss,Hit,Hit,Hit]
+0.011 [Miss,Hit,Hit,Crit]
+0.036 [Miss,Hit,Crit]
+0.120 [Miss,Crit]
+0.019 [Hit,Miss,Miss,Miss]
+0.014 [Hit,Miss,Miss,Hit]
+0.014 [Hit,Miss,Miss,Crit]
+0.014 [Hit,Miss,Hit,Miss]
+0.011 [Hit,Miss,Hit,Hit]
+0.011 [Hit,Miss,Hit,Crit]
+0.036 [Hit,Miss,Crit]
+0.014 [Hit,Hit,Miss,Miss]
+0.011 [Hit,Hit,Miss,Hit]
+0.011 [Hit,Hit,Miss,Crit]
+0.011 [Hit,Hit,Hit,Miss]
+0.008 [Hit,Hit,Hit,Hit]
+0.008 [Hit,Hit,Hit,Crit]
+0.027 [Hit,Hit,Crit]
+0.090 [Hit,Crit]
+0.300 [Crit]
+```
+That's it! Now we'd just have to tally up the expected damage from these and multiply it by the amount of the Imp Shadow Bolt modifier (20%).
+
+Hopefully this has wet your appetite -- I've been having a blast running simulations like these. The full repo is [here](https://github.com/owen-d/vanilla) for those interested. I'll be following up with another post detailing how we determine cast rotations for warlocks which need to use life tap intermitently for mana.
+
+- Owen
