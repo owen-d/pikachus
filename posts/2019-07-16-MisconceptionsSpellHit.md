@@ -17,7 +17,7 @@ dps (warlock): 406.10648 -> expected dps at this gear level
 (SpellCrit,4.2705383) -> dps gained by adding 1% spell crit
 ```
 
-Ok, spell hit edges out crit here. 0% crit isn't even attainable though. At 60 a warlock will have a base crit chance, let's guess ~12%.
+Ok, spell hit edges out crit here. 0% crit isn't even attainable though. At 60 a warlock will have a base crit chance, let's guess ~10%.
 Gearset 2: 300 spell damage, 10% crit, 0% hit.
 ```
 dps (warlock): 448.09277
@@ -43,7 +43,7 @@ dps (warlock): 496.04037
 (SpellCrit,4.2281494)
 ```
 
-What happened? Spell crit just jumped past spell hit! This took me a while to figure out and I almost missed it by attributing it to improved shadowbolt and ruin causing crit to jump ahead of hit.
+What happened? Spell crit just jumped past spell hit! More appropriately, spell hit slowed down. This took me a while to figure out and I almost missed it by attributing it to improved shadowbolt and ruin causing crit to jump ahead of hit.
 
 ## Who's behind the mask?
 Currently, warlocks are coded with an SM/Ruin variant and have 3 points in suppression. We also assume they'll be casting curse of doom instead of Elements or Shadow. The three points in suppression yield 6% spell hit for affliction spells only (curses count). Therefore, affliction spells reach hit cap at 10% hit from gear! Once that threshold has been reached, curses no longer glean any benefit from spell hit and crit eclipses hit. This is great news for many warlocks -- no need to stress over trying to get the near impossible 16% hit, but don't worry, 10% will be hard enough to maintain :).

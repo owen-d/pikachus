@@ -24,7 +24,7 @@ Right now, we only have support for caster dps classes. Melees will come later, 
 
 
 ## Contact
-Feel free to hit me up on Twitter [@castle_vanity](https://twitter.com/castle_vanity) or on the classic theorycrafting discord (caliph). I'm particularly looking for some help finding information like:
+Feel free to hit me up on Twitter @[castle_vanity](https://twitter.com/castle_vanity) or on the classic theorycrafting discord (caliph). I'm particularly looking for some help finding information like:
 - what are the armor/resistance levels for different bosses
 - How do certain talents/debuffs interact? Which things are additive and which are multiplicative? What's the order of operations in which they are applied?
 
